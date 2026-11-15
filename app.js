@@ -67,6 +67,7 @@ const translations = {
     tag_noun: 'Noun', tag_verb: 'Verb', tag_saying: 'Phrase', tag_adjective: 'Adjective',
     seg_noun: 'Noun', seg_verb: 'Verb', seg_saying: 'Phrase', seg_adjective: 'Adj.',
     inflectionLabel: 'Word forms / inflection (optional)', inflectionPh: 'e.g. babcia, babci, babci, babcię, babcią, babci, babciu', formsLabel: 'Forms',
+    noPermission: 'You don’t have permission to edit this word.',
     saidByLabel: 'Who says it (optional)', saidByPh: 'e.g. Grandma Ania, Uncle Marek', saidBy: 'Said by',
     wordPh: 'The word as you remember it', soundPh: 'Syllables or a sound-alike', meaningPh: 'What does it mean?',
     categoryPh: 'e.g. food, weather, family', translationPh: 'A short English equivalent',
@@ -101,6 +102,7 @@ const translations = {
     tag_noun: 'Rzeczownik', tag_verb: 'Czasownik', tag_saying: 'Zwrot', tag_adjective: 'Przymiotnik',
     seg_noun: 'Rzecz.', seg_verb: 'Czas.', seg_saying: 'Zwrot', seg_adjective: 'Przym.',
     inflectionLabel: 'Odmiana słowa (opcjonalnie)', inflectionPh: 'np. babcia, babci, babci, babcię, babcią, babci, babciu', formsLabel: 'Odmiana',
+    noPermission: 'Nie masz uprawnień do edycji tego słowa.',
     saidByLabel: 'Kto tak mówi (opcjonalnie)', saidByPh: 'np. babcia Ania, wujek Marek', saidBy: 'Tak mówi',
     wordPh: 'Słowo tak, jak je pamiętasz', soundPh: 'Sylaby lub podobnie brzmiące słowo', meaningPh: 'Co to znaczy?',
     categoryPh: 'np. jedzenie, pogoda, rodzina', translationPh: 'Krótki odpowiednik po angielsku',
@@ -415,7 +417,7 @@ function openMenu(btn) {
   const e = entries.find(x => x.id === btn.dataset.more); if (!e) return;
   closeMenu();
   const own = !!user && e.created_by === user.id, admin = !!profile?.is_admin;
-  $('menu-edit').hidden = !own; $('menu-delete').hidden = !(own || admin);
+  $('menu-edit').hidden = !(own || admin);   // admins can edit any word $('menu-delete').hidden = !(own || admin);
   const m = $('row-menu'); m.style.visibility = 'hidden'; m.hidden = false;
   const r = btn.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
   let top = r.bottom + 6; if (top + h > innerHeight - 16) top = Math.max(16, r.top - h - 6);
@@ -470,10 +472,12 @@ $('entry-form').onsubmit = async e => {
   });
   $('save-entry').disabled = true;
   const result = editing
-    ? await client.from('entries').update(row).eq('id', editing.id)
+    ? await client.from('entries').update(row).eq('id', editing.id).select('id')
     : await client.from('entries').insert({ ...row, created_by: user.id });
   $('save-entry').disabled = false;
   if (result.error) { status(result.error.message, 'entry-status'); return; }
+  // Row-level security can silently match 0 rows instead of returning an error.
+  if (editing && !result.data?.length) { status(t('noPermission'), 'entry-status'); return; }
   closeEntry(); toast(t('saved')); await loadEntries();
 };
 async function deleteEntry(id) {
