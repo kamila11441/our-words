@@ -66,6 +66,8 @@ const translations = {
     saved: 'Word saved', deleted: 'Word deleted', photoUpdated: 'Photo updated', photoRemoved: 'Photo removed', iconUpdated: 'App icon updated',
     tag_noun: 'Noun', tag_verb: 'Verb', tag_saying: 'Phrase', tag_adjective: 'Adjective',
     seg_noun: 'Noun', seg_verb: 'Verb', seg_saying: 'Phrase', seg_adjective: 'Adj.',
+    inflectionLabel: 'Word forms / inflection (optional)', inflectionPh: 'e.g. babcia, babci, babci, babcię, babcią, babci, babciu', formsLabel: 'Forms',
+    saidByLabel: 'Who says it (optional)', saidByPh: 'e.g. Grandma Ania, Uncle Marek', saidBy: 'Said by',
     wordPh: 'The word as you remember it', soundPh: 'Syllables or a sound-alike', meaningPh: 'What does it mean?',
     categoryPh: 'e.g. food, weather, family', translationPh: 'A short English equivalent',
     examplePh: 'A sentence, story, or who used to say it', namePh: 'e.g. Grandma Ania', passwordPh: 'At least 8 characters',
@@ -98,6 +100,8 @@ const translations = {
     saved: 'Zapisano słowo', deleted: 'Usunięto słowo', photoUpdated: 'Zaktualizowano zdjęcie', photoRemoved: 'Usunięto zdjęcie', iconUpdated: 'Zaktualizowano ikonę aplikacji',
     tag_noun: 'Rzeczownik', tag_verb: 'Czasownik', tag_saying: 'Zwrot', tag_adjective: 'Przymiotnik',
     seg_noun: 'Rzecz.', seg_verb: 'Czas.', seg_saying: 'Zwrot', seg_adjective: 'Przym.',
+    inflectionLabel: 'Odmiana słowa (opcjonalnie)', inflectionPh: 'np. babcia, babci, babci, babcię, babcią, babci, babciu', formsLabel: 'Odmiana',
+    saidByLabel: 'Kto tak mówi (opcjonalnie)', saidByPh: 'np. babcia Ania, wujek Marek', saidBy: 'Tak mówi',
     wordPh: 'Słowo tak, jak je pamiętasz', soundPh: 'Sylaby lub podobnie brzmiące słowo', meaningPh: 'Co to znaczy?',
     categoryPh: 'np. jedzenie, pogoda, rodzina', translationPh: 'Krótki odpowiednik po angielsku',
     examplePh: 'Zdanie, historia lub kto tak mówił', namePh: 'np. Babcia Ania', passwordPh: 'Co najmniej 8 znaków',
@@ -321,7 +325,7 @@ function filtered() {
   const q = $('search').value.trim().toLowerCase();
   const list = entries.filter(e =>
     (!activeCat || entryTagValues(e).includes(activeCat)) &&
-    (!q || [e.word, e.pronunciation, e.meaning, e.english_translation, e.category, e.example, e.topic, e.profiles?.display_name].some(v => (v || '').toLowerCase().includes(q))));
+    (!q || [e.word, e.pronunciation, e.said_by, e.inflection, e.meaning, e.english_translation, e.category, e.example, e.topic, e.profiles?.display_name].some(v => (v || '').toLowerCase().includes(q))));
   const sort = $('sort').value;
   if (sort === 'az') list.sort((a, b) => PL.compare(a.word, b.word));
   else if (sort === 'oldest') list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
@@ -342,8 +346,9 @@ function rowHTML(e) {
       ${e.english_translation ? `<div class="english">${t('englishLabel')}: ${esc(e.english_translation)}</div>` : ''}
     </div>
     <div class="row-extra">
+      ${e.inflection ? `<p class="forms"><strong>${t('formsLabel')}:</strong> ${esc(e.inflection)}</p>` : ''}
       ${e.example ? `<p class="example">“${esc(e.example)}”</p>` : ''}
-      <div class="meta">${cats.map(c => `<span class="cat">${esc(c)}</span>`).join('')}<span>${t('addedBy')} <strong>${esc(e.profiles?.display_name || t('familyMember'))}</strong></span></div>
+      <div class="meta">${cats.map(c => `<span class="cat">${esc(c)}</span>`).join('')}${e.said_by ? `<span>${t('saidBy')} <strong>${esc(e.said_by)}</strong></span>` : ''}<span>${t('addedBy')} <strong>${esc(e.profiles?.display_name || t('familyMember'))}</strong></span></div>
     </div>
   </article>`;
 }
@@ -438,9 +443,11 @@ function openEntry(e) {
   $('category').value = e ? entryTag(e) : '';
   $('english-translation').value = e?.english_translation || '';
   $('pronunciation').value = e?.pronunciation || '';
+  $('said-by').value = e?.said_by || '';
+  $('inflection').value = e?.inflection || '';
   $('meaning').value = e?.meaning || '';
   $('example').value = e?.example || '';
-  $('more-fields').open = !!(e && (entryTag(e) || e.english_translation || e.example));
+  $('more-fields').open = !!(e && (e.pronunciation || e.said_by || e.inflection || entryTag(e) || e.english_translation || e.example));
   status('', 'entry-status');
   openOverlay('entry-modal', $('word'));
 }
@@ -456,6 +463,11 @@ $('entry-form').onsubmit = async e => {
     pronunciation: $('pronunciation').value.trim() || null,
     meaning: $('meaning').value.trim(), example: $('example').value.trim() || null
   };
+  // Only send said_by / inflection when used, so saving still works before the columns exist.
+  [['said_by', 'said-by'], ['inflection', 'inflection']].forEach(([col, id]) => {
+    const v = $(id).value.trim();
+    if (v) row[col] = v; else if (editing?.[col]) row[col] = null;
+  });
   $('save-entry').disabled = true;
   const result = editing
     ? await client.from('entries').update(row).eq('id', editing.id)
