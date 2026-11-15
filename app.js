@@ -335,8 +335,8 @@ function rowHTML(e) {
   const type = WORD_TYPES.includes(e.word_type) ? e.word_type : 'noun';
   const cats = entryTagValues(e);
   return `<article class="row" data-id="${esc(e.id)}">
-    <div class="row-title"><h2 class="word">${esc(e.word)}</h2>${e.pronunciation ? `<div class="pron">${esc(e.pronunciation)}</div>` : ''}</div>
-    <div class="row-side"><span class="tag type-${type}">${t('tag_' + type)}</span>${own || admin ? `<button type="button" class="icon-btn" data-more="${esc(e.id)}" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t('moreFor'))} ${esc(e.word)}">${ico('more')}</button>` : ''}</div>
+    <div class="row-title"><div class="word-line"><h2 class="word">${esc(e.word)}</h2><span class="tag tag-inline type-${type}">${t('tag_' + type)}</span></div>${e.pronunciation ? `<div class="pron">${esc(e.pronunciation)}</div>` : ''}</div>
+    <div class="row-side"><span class="tag tag-side type-${type}">${t('tag_' + type)}</span>${own || admin ? `<button type="button" class="icon-btn" data-more="${esc(e.id)}" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t('moreFor'))} ${esc(e.word)}">${ico('more')}</button>` : ''}</div>
     <div class="row-main">
       <p class="meaning">${esc(e.meaning)}</p>
       ${e.english_translation ? `<div class="english">${t('englishLabel')}: ${esc(e.english_translation)}</div>` : ''}
